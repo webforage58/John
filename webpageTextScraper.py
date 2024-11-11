@@ -1,17 +1,20 @@
-import urllib.request
+import requests
 from bs4 import BeautifulSoup
 import tkinter as tk
 from tkinter import ttk, messagebox, filedialog
 from tkinter.scrolledtext import ScrolledText
-import urllib.error
-import socket
+import json
 
-#test23
 class WebScraperGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Webpage Text Scraper")
-        self.root.geometry("700x600")
+        self.root.title("Enhanced Webpage Scraper")
+        self.root.geometry("800x700")
+        
+        # Configure headers
+        self.headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
         
         # URL Frame
         url_frame = ttk.LabelFrame(root, text="URL", padding="5")
@@ -19,6 +22,18 @@ class WebScraperGUI:
         
         self.url_entry = ttk.Entry(url_frame, width=70)
         self.url_entry.pack(fill="x", padx=5, pady=2)
+        
+        # Scraping Options Frame
+        options_frame = ttk.LabelFrame(root, text="Scraping Options", padding="5")
+        options_frame.pack(fill="x", padx=5, pady=5)
+        
+        self.scrape_text = tk.BooleanVar(value=True)
+        self.scrape_links = tk.BooleanVar(value=False)
+        self.scrape_images = tk.BooleanVar(value=False)
+        
+        ttk.Checkbutton(options_frame, text="Text Content", variable=self.scrape_text).pack(side="left", padx=5)
+        ttk.Checkbutton(options_frame, text="Links", variable=self.scrape_links).pack(side="left", padx=5)
+        ttk.Checkbutton(options_frame, text="Images", variable=self.scrape_images).pack(side="left", padx=5)
         
         # File Path Frame
         file_frame = ttk.LabelFrame(root, text="Save Location", padding="5")
@@ -56,17 +71,38 @@ class WebScraperGUI:
         if filename:
             self.file_path.set(filename)
             
-    def get_webpage_text(self):
+    def scrape_webpage(self):
+        url = self.url_entry.get()
         try:
-            response = urllib.request.urlopen(self.url_entry.get())
-            html_content = response.read()
-            soup = BeautifulSoup(html_content, 'html.parser')
-            text_content = ""
-            for paragraph in soup.find_all("p"):
-                text_content += paragraph.get_text() + "\n\n"
-            return text_content
-        except Exception as e:
-            messagebox.showerror("Error", f"Error fetching webpage: {str(e)}")
+            response = requests.get(url, headers=self.headers, timeout=10)
+            response.raise_for_status()
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            result = {}
+            
+            if self.scrape_text.get():
+                result['text'] = []
+                for elem in soup.find_all(['p', 'h1', 'h2', 'h3', 'article']):
+                    result['text'].append(elem.get_text().strip())
+            
+            if self.scrape_links.get():
+                result['links'] = []
+                for link in soup.find_all('a'):
+                    href = link.get('href')
+                    if href and href.startswith('http'):
+                        result['links'].append(href)
+            
+            if self.scrape_images.get():
+                result['images'] = []
+                for img in soup.find_all('img'):
+                    src = img.get('src')
+                    if src:
+                        result['images'].append(src)
+            
+            return json.dumps(result, indent=2)
+            
+        except requests.RequestException as e:
+            messagebox.showerror("Error", f"Failed to fetch webpage: {str(e)}")
             return None
             
     def preview_text(self):
@@ -74,7 +110,7 @@ class WebScraperGUI:
             messagebox.showwarning("Warning", "Please enter a URL")
             return
             
-        text_content = self.get_webpage_text()
+        text_content = self.scrape_webpage()
         if text_content:
             self.preview_text_widget.delete(1.0, tk.END)
             self.preview_text_widget.insert(tk.END, text_content)
