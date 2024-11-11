@@ -6,12 +6,12 @@ from tkinter.scrolledtext import ScrolledText
 import urllib.error
 import socket
 
-#test2
+#test23
 class WebScraperGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Webpage Text Scraper")
-        self.root.geometry("600x500")
+        self.root.geometry("700x600")
         
         # URL Frame
         url_frame = ttk.LabelFrame(root, text="URL", padding="5")
